@@ -7,6 +7,7 @@ import {
 } from "ai";
 import {
   adminTools,
+  bash,
   getProductDetails,
   searchProducts,
   shoppingTools,
@@ -78,3 +79,5 @@ export type AdminAgentUIMessage = UIMessage<
   never,
   InferUITools<typeof adminTools>
 >;
+
+export type BashToolInvocation = UIToolInvocation<typeof bash>;

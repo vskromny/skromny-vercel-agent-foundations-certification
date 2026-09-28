@@ -11,6 +11,7 @@ import {
   getProducts,
   getProductStock,
 } from "@/lib/api";
+import { createOrGetSandbox, SANDBOX_NAME } from "@/lib/sandbox";
 import type { Product } from "@/lib/types";
 import { returnFlow } from "@/lib/workflows/return-flow";
 
@@ -350,10 +351,40 @@ export const getSalesAnalytics = tool({
   },
 });
 
-/** Read-only back-office access for the admin agent. */
+export const bash = tool({
+  description:
+    "Run a bash command in a persistent Linux sandbox. Use it to compute over " +
+    "data you already fetched — write the JSON to a file under /tmp with a " +
+    "heredoc, then process it with python3. The filesystem survives between " +
+    "commands and between conversations, so you can build on earlier files.",
+  inputSchema: z.object({
+    command: z.string().describe("The bash command to run"),
+  }),
+  execute: async ({ command }) => {
+    "use step";
+
+    const sandbox = await createOrGetSandbox(SANDBOX_NAME);
+    const result = await sandbox.runCommand("bash", ["-lc", command]);
+
+    return {
+      stdout: await result.stdout(),
+      stderr: await result.stderr(),
+      exitCode: result.exitCode,
+    };
+  },
+});
+
+/**
+ * Read-only back-office access for the admin agent, plus the sandbox it does
+ * its arithmetic in. The catalog tools are here too: questions like "which
+ * top sellers are running low" need product names, not just ids.
+ */
 export const adminTools = {
+  bash,
   getSupportTickets,
   getReturnsHistory,
   getInventoryStock,
   getSalesAnalytics,
+  searchProducts,
+  getAllCategories,
 };

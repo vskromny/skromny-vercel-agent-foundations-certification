@@ -24,6 +24,7 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
+import { AgentTerminal } from "@/components/agent-terminal";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import type { AdminAgentUIMessage } from "@/lib/agent";
 
@@ -32,7 +33,7 @@ const SUGGESTIONS = [
   "What were yesterday's top sellers?",
   "Summarize this week's revenue",
   "Which top sellers are running low?",
-  "What's our return rate this month?",
+  "Which products have the worst return rate?",
 ];
 
 /** Same reasoning as the storefront panel: don't gate our own routes. */
@@ -81,16 +82,22 @@ export function AdminAgentChat() {
             messages.map((message) => (
               <Message from={message.role} key={message.id}>
                 <MessageContent>
-                  {message.parts.map((part, index) =>
-                    part.type === "text" ? (
-                      <MessageResponse
-                        key={`${message.id}-${index}`}
-                        linkSafety={linkSafety}
-                      >
-                        {part.text}
-                      </MessageResponse>
-                    ) : null,
-                  )}
+                  {message.parts.map((part, index) => {
+                    const key = `${message.id}-${index}`;
+
+                    switch (part.type) {
+                      case "text":
+                        return (
+                          <MessageResponse key={key} linkSafety={linkSafety}>
+                            {part.text}
+                          </MessageResponse>
+                        );
+                      case "tool-bash":
+                        return <AgentTerminal invocation={part} key={key} />;
+                      default:
+                        return null;
+                    }
+                  })}
                 </MessageContent>
               </Message>
             ))
