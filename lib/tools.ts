@@ -1,16 +1,14 @@
 import { tool } from "ai";
+import { start } from "workflow/api";
 import { z } from "zod";
 import {
-  createReturn,
   getCategories,
-  getOrder,
   getProductById,
   getProducts,
   getProductStock,
-  notifyReturnInProcess,
-  preauthorizeRefund,
 } from "@/lib/api";
 import type { Product } from "@/lib/types";
+import { returnFlow } from "@/lib/workflows/return-flow";
 
 /** Products are routed by id: see app/(store)/products/[param]. */
 const productUrl = (product: Product) => `/products/${product.id}`;
@@ -56,6 +54,8 @@ export const searchProducts = tool({
       .describe("Max products to return. Defaults to 8."),
   }),
   execute: async ({ query, category, limit }) => {
+    "use step";
+
     const products = await getProducts({
       search: query,
       category,
@@ -76,6 +76,8 @@ export const getAllCategories = tool({
     "or to answer 'what kinds of things do you sell'.",
   inputSchema: z.object({}),
   execute: async () => {
+    "use step";
+
     const categories = await getCategories();
 
     return {
@@ -100,6 +102,8 @@ export const getProductDetails = tool({
       .describe("Product id or slug, as returned by searchProducts"),
   }),
   execute: async ({ productId }) => {
+    "use step";
+
     const product = await getProductById(productId);
 
     // Stock is a separate, uncached endpoint; a failure here shouldn't sink
@@ -129,34 +133,29 @@ export const getProductDetails = tool({
 
 export const returnOrder = tool({
   description:
-    "File a return for an order. Only call this when the customer explicitly asks " +
-    "to return items and has given an order id. Looks up the order, notifies the " +
-    "customer, pre-authorizes the refund, and files the return.",
+    "File a return for one of the customer's past orders. Only call this when " +
+    "the customer explicitly asks to return something and has given an order id " +
+    "and a reason — ask for whichever is missing. Example order ids: 11111, " +
+    "22222, 33333. This hands off to a background workflow and comes back " +
+    "immediately; do not promise the refund is already done.",
   inputSchema: z.object({
-    orderId: z.string().describe("The order id to return items from"),
-    items: z
-      .array(
-        z.object({
-          productId: z.string(),
-          quantity: z.number().int().min(1),
-        }),
-      )
-      .min(1)
-      .describe("Which items from the order to return, and how many of each"),
-    reason: z.string().describe("The customer's reason for returning"),
+    orderId: z.string().describe("The order id the customer wants to return"),
+    reason: z
+      .string()
+      .min(10)
+      .max(500)
+      .describe("Why the customer is returning the order"),
   }),
-  execute: async ({ orderId, items, reason }) => {
-    const order = await getOrder(orderId);
+  execute: async ({ orderId, reason }) => {
+    "use step";
 
-    await notifyReturnInProcess(order.id);
-    const preauthorization = await preauthorizeRefund(order.id);
-    const filedReturn = await createReturn({ orderId: order.id, items, reason });
+    // `start` queues the workflow and returns at once, so the customer isn't
+    // left waiting ~30s on the refund pre-authorization.
+    const run = await start(returnFlow, [orderId, reason]);
 
     return {
-      returnId: filedReturn.id,
-      status: filedReturn.status,
-      refundPreauthorized: preauthorization.amount,
-      currency: preauthorization.currency,
+      runId: run.runId,
+      message: `Return request received for order ${orderId}. We'll email you as it progresses.`,
     };
   },
 });
