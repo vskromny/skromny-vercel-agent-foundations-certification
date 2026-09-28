@@ -2,6 +2,10 @@ import { tool } from "ai";
 import { start } from "workflow/api";
 import { z } from "zod";
 import {
+  getBackOfficeReturns,
+  getBackOfficeSales,
+  getBackOfficeStock,
+  getBackOfficeSupportTickets,
   getCategories,
   getProductById,
   getProducts,
@@ -165,4 +169,191 @@ export const shoppingTools = {
   getAllCategories,
   getProductDetails,
   returnOrder,
+};
+
+// ---------------------------------------------------------------------------
+// Back-office tools. These power the admin agent at /admin and are read-only —
+// nothing here mutates store data.
+// ---------------------------------------------------------------------------
+
+/** Every back-office range query takes the same optional window. */
+const dateRange = {
+  from: z
+    .string()
+    .optional()
+    .describe("Start of the window, YYYY-MM-DD. Defaults to 30 days before `to`."),
+  to: z
+    .string()
+    .optional()
+    .describe("End of the window, YYYY-MM-DD. Defaults to today."),
+};
+
+export const getSupportTickets = tool({
+  description:
+    "List support tickets from the back office within a date range. Use for " +
+    "questions about customer complaints, open workload, or what people are " +
+    "writing in about. Filter to narrow down; omit filters to see everything.",
+  inputSchema: z.object({
+    ...dateRange,
+    status: z.enum(["open", "pending", "resolved", "closed"]).optional(),
+    priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+    category: z
+      .enum([
+        "shipping",
+        "returns",
+        "product_quality",
+        "sizing",
+        "billing",
+        "payment",
+        "account",
+        "other",
+      ])
+      .optional(),
+    assignee: z
+      .string()
+      .optional()
+      .describe("Staff username, e.g. 'alex'. Excludes unassigned tickets."),
+    limit: z.number().int().min(1).max(500).optional().describe("Default 25."),
+  }),
+  execute: async (params) => {
+    "use step";
+
+    const { data, meta } = await getBackOfficeSupportTickets(params);
+
+    return {
+      range: { from: meta.from, to: meta.to },
+      count: meta.count,
+      tickets: data.map((ticket) => ({
+        id: ticket.id,
+        subject: ticket.subject,
+        status: ticket.status,
+        priority: ticket.priority,
+        category: ticket.category,
+        assignee: ticket.assignee,
+        relatedOrderId: ticket.relatedOrderId,
+        createdAt: ticket.createdAt,
+        lastMessageAt: ticket.lastMessageAt,
+      })),
+    };
+  },
+});
+
+export const getReturnsHistory = tool({
+  description:
+    "List historical returns from the back office within a date range, with " +
+    "the decision and refund amount for each. Use for return rates, refund " +
+    "totals, or which products come back most.",
+  inputSchema: z.object({
+    ...dateRange,
+    status: z.enum(["pending", "processing", "completed"]).optional(),
+    decision: z.enum(["approved", "rejected", "needs_info"]).optional(),
+    limit: z.number().int().min(1).max(500).optional().describe("Default 25."),
+  }),
+  execute: async (params) => {
+    "use step";
+
+    const { data, meta } = await getBackOfficeReturns(params);
+
+    return {
+      range: { from: meta.from, to: meta.to },
+      count: meta.count,
+      returns: data.map((filed) => ({
+        id: filed.id,
+        orderId: filed.orderId,
+        status: filed.status,
+        decision: filed.decision,
+        // Cents, like every other price in the API.
+        refundAmount: filed.refundAmount,
+        reason: filed.reason,
+        items: filed.items,
+        createdAt: filed.createdAt,
+        processedAt: filed.processedAt,
+      })),
+    };
+  },
+});
+
+export const getInventoryStock = tool({
+  description:
+    "Current stock levels for all products, lowest first. Use for restock " +
+    "questions, what's out of stock, or what's running low.",
+  inputSchema: z.object({
+    lowStock: z
+      .boolean()
+      .optional()
+      .describe("True for products with 1-5 units left; false to exclude them."),
+    inStock: z
+      .boolean()
+      .optional()
+      .describe("False to see only sold-out products."),
+    productIds: z
+      .array(z.string())
+      .optional()
+      .describe("Restrict to specific product ids."),
+    limit: z.number().int().min(1).max(200).optional().describe("Default 50."),
+  }),
+  execute: async (params) => {
+    "use step";
+
+    const { data } = await getBackOfficeStock(params);
+
+    return {
+      count: data.length,
+      // Ascending, so the answer to "what's running low" is at the top.
+      products: [...data]
+        .sort((a, b) => a.stock - b.stock)
+        .map((entry) => ({
+          productId: entry.productId,
+          name: entry.product.name,
+          category: entry.product.category,
+          stock: entry.stock,
+          inStock: entry.inStock,
+          lowStock: entry.lowStock,
+          url: `/products/${entry.productId}`,
+        })),
+    };
+  },
+});
+
+export const getSalesAnalytics = tool({
+  description:
+    "Sales totals by product within a date range — units sold, order count, " +
+    "and revenue, plus the totals for the window. Use for top sellers, " +
+    "revenue questions, or comparing periods.",
+  inputSchema: z.object({
+    ...dateRange,
+    productId: z
+      .string()
+      .optional()
+      .describe("Restrict to a single product instead of the whole catalog."),
+  }),
+  execute: async (params) => {
+    "use step";
+
+    const { data, meta } = await getBackOfficeSales(params);
+
+    return {
+      range: { from: meta.from, to: meta.to, days: meta.days },
+      currency: meta.currency,
+      totals: meta.totals,
+      products: data.map((row) => ({
+        productId: row.productId,
+        name: row.product.name,
+        category: row.product.category,
+        unitsSold: row.unitsSold,
+        ordersCount: row.ordersCount,
+        // Cents.
+        revenue: row.revenue,
+        url: `/products/${row.productId}`,
+      })),
+    };
+  },
+});
+
+/** Read-only back-office access for the admin agent. */
+export const adminTools = {
+  getSupportTickets,
+  getReturnsHistory,
+  getInventoryStock,
+  getSalesAnalytics,
 };
