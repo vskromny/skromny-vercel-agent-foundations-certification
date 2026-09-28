@@ -28,3 +28,6 @@ next-env.d.ts
 # Claude Code local settings
 .claude/settings.local.json
 /.swc
+
+# Eve build artifacts (my-agent has its own, this covers a stray root run)
+.eve/
