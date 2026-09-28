@@ -23,6 +23,16 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 
+/**
+ * Streamdown treats every link as external and shows an "are you sure" modal.
+ * Product links the agent emits are same-origin store routes, so let those
+ * through and keep the interstitial for anything off-site.
+ */
+const linkSafety = {
+  enabled: true,
+  onLinkCheck: (url: string) => url.startsWith("/"),
+};
+
 export function AgentChat() {
   const { messages, sendMessage, status, stop, error } = useChat();
 
@@ -52,7 +62,10 @@ export function AgentChat() {
                 <MessageContent>
                   {message.parts.map((part, index) =>
                     part.type === "text" ? (
-                      <MessageResponse key={`${message.id}-${index}`}>
+                      <MessageResponse
+                        key={`${message.id}-${index}`}
+                        linkSafety={linkSafety}
+                      >
                         {part.text}
                       </MessageResponse>
                     ) : null
