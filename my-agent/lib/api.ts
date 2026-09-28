@@ -1,20 +1,35 @@
-const BASE_URL = process.env.API_BASE_URL;
-const BYPASS_TOKEN = process.env.BYPASS_SECRET;
-
 type Params = Record<string, string | number | undefined>;
 
-async function apiGet(path: string, params?: Params) {
-  if (!BASE_URL || !BYPASS_TOKEN) {
-    throw new Error("API_BASE_URL and BYPASS_SECRET must be set in .env.local");
+/**
+ * Read the environment per call, not once at module scope. The deployed bundle
+ * is built before Vercel's sensitive env vars exist, so a top-level
+ * `process.env.API_BASE_URL` gets inlined as undefined and every request fails
+ * with "Invalid URL" — with the values sitting correctly in the dashboard.
+ */
+function credentials() {
+  const baseUrl = process.env.API_BASE_URL;
+  const bypassToken = process.env.BYPASS_SECRET;
+
+  if (!baseUrl || !bypassToken) {
+    throw new Error(
+      "API_BASE_URL and BYPASS_SECRET must be set (locally in .env.local, in " +
+        "production as Vercel project environment variables)",
+    );
   }
 
-  const url = new URL(BASE_URL + path);
+  return { baseUrl, bypassToken };
+}
+
+async function apiGet(path: string, params?: Params) {
+  const { baseUrl, bypassToken } = credentials();
+
+  const url = new URL(baseUrl + path);
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
 
   const res = await fetch(url, {
-    headers: { "x-vercel-protection-bypass": BYPASS_TOKEN },
+    headers: { "x-vercel-protection-bypass": bypassToken },
   });
 
   if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
