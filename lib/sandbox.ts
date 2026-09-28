@@ -26,3 +26,25 @@ export const createOrGetSandbox = async (name: string) =>
     snapshotExpiration: SNAPSHOT_EXPIRATION,
     timeout: TIMEOUT,
   });
+
+/** Relative to the sandbox's default cwd, `/vercel/sandbox`. */
+export const MEMORY_PATH = "memories.md";
+
+/**
+ * Where the agent parks scripts it expects to run again. Relative on purpose:
+ * `bash -lc` and the SDK's file helpers share the sandbox's working directory
+ * (currently /vercel, not the /vercel/sandbox the docs claim), so a relative
+ * path stays correct if that ever moves.
+ */
+export const SCRIPTS_DIR = "scripts";
+
+/**
+ * The agent's notes to itself, or `null` the first time — `readFileToBuffer`
+ * answers with null rather than throwing when the file isn't there yet.
+ */
+export const readMemories = async () => {
+  const sandbox = await createOrGetSandbox(SANDBOX_NAME);
+  const buffer = await sandbox.readFileToBuffer({ path: MEMORY_PATH });
+
+  return buffer ? new TextDecoder().decode(buffer) : null;
+};
