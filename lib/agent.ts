@@ -1,9 +1,12 @@
 import {
   ToolLoopAgent,
   type InferAgentUIMessage,
+  type InferUITools,
+  type UIMessage,
   type UIToolInvocation,
 } from "ai";
 import {
+  adminTools,
   getProductDetails,
   searchProducts,
   shoppingTools,
@@ -64,4 +67,14 @@ export type SearchProductsToolInvocation = UIToolInvocation<
 >;
 export type ProductDetailsToolInvocation = UIToolInvocation<
   typeof getProductDetails
+>;
+
+/**
+ * The admin agent's message shape. The conversation itself runs as
+ * `adminChatFlow`; this derives the typed tool parts from the same tool set.
+ */
+export type AdminAgentUIMessage = UIMessage<
+  unknown,
+  never,
+  InferUITools<typeof adminTools>
 >;

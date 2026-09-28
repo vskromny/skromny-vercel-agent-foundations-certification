@@ -1,21 +1,20 @@
 "use client";
 
-/**
- * Welcome! This is the chat panel you will edit for the workshop!
- *
- * During the workshop you'll connect it to a real agent: swap the
- * local `useState` for `useChat` from the AI SDK, point the form
- * at `sendMessage`, and render each message's `parts` inside
- * `<ConversationContent>`.
- *
- * Workshop docs: https://agent-foundations-certification.vercel.app/docs/admin-chat-agent
- */
-import { useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { BotIcon } from "lucide-react";
+import { useMemo } from "react";
 import {
   Conversation,
   ConversationContent,
+  ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputBody,
@@ -26,42 +25,99 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import type { AdminAgentUIMessage } from "@/lib/agent";
 
 const SUGGESTIONS = [
   "Show me low-stock items",
   "What were yesterday's top sellers?",
   "Summarize this week's revenue",
+  "Which top sellers are running low?",
+  "What's our return rate this month?",
 ];
 
-export function AdminAgentChat() {
-  const [input, setInput] = useState("");
+/** Same reasoning as the storefront panel: don't gate our own routes. */
+const linkSafety = {
+  enabled: true,
+  onLinkCheck: (url: string) => url.startsWith("/"),
+};
 
-  const handleSubmit = (message: PromptInputMessage) => {};
+export function AdminAgentChat() {
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport<AdminAgentUIMessage>({
+        api: "/api/admin/chat",
+      }),
+    [],
+  );
+
+  const { messages, sendMessage, status, stop, error } =
+    useChat<AdminAgentUIMessage>({ transport });
+
+  const isBusy = status === "submitted" || status === "streaming";
+
+  const ask = (text: string) => {
+    if (!text.trim() || isBusy) {
+      return;
+    }
+
+    sendMessage({ text });
+  };
+
+  const handleSubmit = (message: PromptInputMessage) => {
+    ask(message.text);
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Conversation className="flex-1">
-        <ConversationContent>{null}</ConversationContent>
+        <ConversationContent>
+          {messages.length === 0 ? (
+            <ConversationEmptyState
+              description="Ask about tickets, returns, stock, or sales. Read-only — I can look, not change."
+              icon={<BotIcon className="size-5" />}
+              title="Store admin agent"
+            />
+          ) : (
+            messages.map((message) => (
+              <Message from={message.role} key={message.id}>
+                <MessageContent>
+                  {message.parts.map((part, index) =>
+                    part.type === "text" ? (
+                      <MessageResponse
+                        key={`${message.id}-${index}`}
+                        linkSafety={linkSafety}
+                      >
+                        {part.text}
+                      </MessageResponse>
+                    ) : null,
+                  )}
+                </MessageContent>
+              </Message>
+            ))
+          )}
+
+          {error && (
+            <p className="text-destructive text-sm">
+              Something went wrong. Please try again.
+            </p>
+          )}
+        </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
 
       <div className="flex flex-col gap-3 border-t p-3">
         <Suggestions>
-          {SUGGESTIONS.map((s) => (
-            <Suggestion key={s} suggestion={s} />
+          {SUGGESTIONS.map((suggestion) => (
+            <Suggestion key={suggestion} onClick={ask} suggestion={suggestion} />
           ))}
         </Suggestions>
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputBody>
-            <PromptInputTextarea
-              value={input}
-              onChange={(e) => setInput(e.currentTarget.value)}
-              placeholder="Ask the admin agent…"
-            />
+            <PromptInputTextarea placeholder="Ask the admin agent…" />
           </PromptInputBody>
           <PromptInputFooter>
             <PromptInputTools />
-            <PromptInputSubmit status="ready" disabled={!input.trim()} />
+            <PromptInputSubmit onStop={stop} status={status} />
           </PromptInputFooter>
         </PromptInput>
       </div>
