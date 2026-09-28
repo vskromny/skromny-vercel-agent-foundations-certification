@@ -17,7 +17,9 @@ const productUrl = (product: Product) => `/products/${product.id}`;
 
 /**
  * Trim a product to what the model needs to talk about it and link to it.
- * Sending the full record (images, tags, timestamps) burns context for no gain.
+ * Sending the full record (every image, tags, timestamps) burns context for no
+ * gain. The single thumbnail is the exception: the UI renders these results as
+ * product cards, and one URL per product is cheap.
  */
 const summarize = (product: Product) => ({
   id: product.id,
@@ -26,6 +28,7 @@ const summarize = (product: Product) => ({
   price: product.price,
   currency: product.currency,
   category: product.category,
+  image: product.images[0] ?? null,
   url: productUrl(product),
 });
 
