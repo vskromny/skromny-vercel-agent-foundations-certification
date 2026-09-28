@@ -1,21 +1,18 @@
 "use client";
 
-/**
- * Welcome! This is the chat panel you will edit for the workshop!
- *
- * During the workshop you'll connect it to a real agent: swap the
- * local `useState` for `useChat` from the AI SDK, point the form
- * at `sendMessage`, and render each message's `parts` inside
- * `<ConversationContent>`.
- *
- * Workshop docs: https://agent-foundations-certification.vercel.app/docs/chat-agent
- */
-import { useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { ShoppingBagIcon } from "lucide-react";
 import {
   Conversation,
   ConversationContent,
+  ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputBody,
@@ -27,29 +24,61 @@ import {
 } from "@/components/ai-elements/prompt-input";
 
 export function AgentChat() {
-  const [input, setInput] = useState("");
+  const { messages, sendMessage, status, stop, error } = useChat();
 
-  const handleSubmit = (message: PromptInputMessage) => {};
+  const handleSubmit = (message: PromptInputMessage) => {
+    const text = message.text.trim();
+
+    if (!text || status === "submitted" || status === "streaming") {
+      return;
+    }
+
+    sendMessage({ text });
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Conversation className="flex-1">
-        <ConversationContent>{null}</ConversationContent>
+        <ConversationContent>
+          {messages.length === 0 ? (
+            <ConversationEmptyState
+              description="Ask about products, sizing, or what to pair with your hoodie."
+              icon={<ShoppingBagIcon className="size-5" />}
+              title="Shopping assistant"
+            />
+          ) : (
+            messages.map((message) => (
+              <Message from={message.role} key={message.id}>
+                <MessageContent>
+                  {message.parts.map((part, index) =>
+                    part.type === "text" ? (
+                      <MessageResponse key={`${message.id}-${index}`}>
+                        {part.text}
+                      </MessageResponse>
+                    ) : null
+                  )}
+                </MessageContent>
+              </Message>
+            ))
+          )}
+
+          {error && (
+            <p className="text-destructive text-sm">
+              Something went wrong. Please try again.
+            </p>
+          )}
+        </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
 
       <div className="border-t p-3">
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputBody>
-            <PromptInputTextarea
-              value={input}
-              onChange={(e) => setInput(e.currentTarget.value)}
-              placeholder="Ask the agent"
-            />
+            <PromptInputTextarea placeholder="Ask the agent" />
           </PromptInputBody>
           <PromptInputFooter>
             <PromptInputTools />
-            <PromptInputSubmit status="ready" disabled={!input.trim()} />
+            <PromptInputSubmit onStop={stop} status={status} />
           </PromptInputFooter>
         </PromptInput>
       </div>
