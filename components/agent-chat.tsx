@@ -1,7 +1,9 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { WorkflowChatTransport } from "@workflow/ai";
 import { ShoppingBagIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ShoppingAgentUIMessage } from "@/lib/agent";
 import { AgentProductCard } from "@/components/agent-product-card";
 import { AgentProductList } from "@/components/agent-product-list";
@@ -36,9 +38,64 @@ const linkSafety = {
   onLinkCheck: (url: string) => url.startsWith("/"),
 };
 
+/** Where the id of the run currently streaming is parked across reloads. */
+const RUN_ID_KEY = "active-workflow-run-id";
+
 export function AgentChat() {
-  const { messages, sendMessage, status, stop, error } =
-    useChat<ShoppingAgentUIMessage>();
+  // Read once on mount: if a run was still streaming when the page went away,
+  // reconnect to it instead of dropping the half-finished answer.
+  const [resumeRunId] = useState(() =>
+    typeof window === "undefined"
+      ? null
+      : window.localStorage.getItem(RUN_ID_KEY),
+  );
+
+  const transport = useMemo(
+    () =>
+      new WorkflowChatTransport<ShoppingAgentUIMessage>({
+        api: "/api/chat",
+        onChatSendMessage: (response) => {
+          const runId = response.headers.get("x-workflow-run-id");
+          if (runId) {
+            window.localStorage.setItem(RUN_ID_KEY, runId);
+          }
+        },
+        onChatEnd: () => window.localStorage.removeItem(RUN_ID_KEY),
+        // Replay from chunk 0. Resuming nearer the tail is tempting, but the
+        // message can only be rebuilt if the client sees the chunks that opened
+        // it — start from a later index and the answer renders as nothing.
+        initialStartIndex: 0,
+        prepareReconnectToStreamRequest: ({ api, ...rest }) => {
+          const runId = window.localStorage.getItem(RUN_ID_KEY);
+          if (!runId) {
+            throw new Error("No active workflow run to reconnect to");
+          }
+
+          return {
+            ...rest,
+            api: `/api/chat/${encodeURIComponent(runId)}/stream`,
+          };
+        },
+      }),
+    [],
+  );
+
+  const { messages, sendMessage, status, stop, error, resumeStream } =
+    useChat<ShoppingAgentUIMessage>({ transport });
+
+  // `useChat({ resume: true })` reconnects from an effect with no guard, so
+  // React Strict Mode fires it twice and two reconnects race over the same
+  // run — the answer lands in the list twice. Do it once by hand instead.
+  const hasResumed = useRef(false);
+
+  useEffect(() => {
+    if (hasResumed.current || !resumeRunId) {
+      return;
+    }
+
+    hasResumed.current = true;
+    resumeStream();
+  }, [resumeRunId, resumeStream]);
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text.trim();
