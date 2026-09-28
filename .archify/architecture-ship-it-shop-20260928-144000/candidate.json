@@ -1,0 +1,679 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Ship It Shop — Storefront + Durable Shopping Agent",
+    "output": ".archify/architecture-ship-it-shop-20260928-144000/ship-it-shop.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/vskromny/skromny-vercel-agent-foundations-certification.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "e8b07a4bed2752a3eb4f9de6f754a474af955661"
+    }
+  },
+  "components": [
+    {
+      "id": "shopper",
+      "type": "external",
+      "label": "Shopper",
+      "sublabel": "Browser",
+      "pos": [
+        24,
+        310
+      ],
+      "size": [
+        155,
+        72
+      ]
+    },
+    {
+      "id": "adminProxy",
+      "type": "security",
+      "label": "proxy.ts",
+      "sublabel": "admin cookie gate",
+      "tag": "/admin/:path*",
+      "pos": [
+        24,
+        34
+      ],
+      "size": [
+        155,
+        60
+      ],
+      "sources": [
+        {
+          "path": "proxy.ts",
+          "line": 5,
+          "end_line": 25,
+          "label": "redirect unless admin cookie"
+        }
+      ]
+    },
+    {
+      "id": "adminDash",
+      "type": "frontend",
+      "label": "Admin Dashboard",
+      "sublabel": "app/admin",
+      "pos": [
+        261,
+        34
+      ],
+      "size": [
+        155,
+        60
+      ],
+      "sources": [
+        {
+          "path": "app/admin/page.tsx",
+          "line": 12,
+          "end_line": 38,
+          "label": "hosts AdminAgentChat"
+        }
+      ]
+    },
+    {
+      "id": "adminRoute",
+      "type": "backend",
+      "label": "Admin Chat Route",
+      "sublabel": "POST /api/admin/chat",
+      "tag": "501 stub",
+      "pos": [
+        498,
+        34
+      ],
+      "size": [
+        155,
+        60
+      ],
+      "sources": [
+        {
+          "path": "app/api/admin/chat/route.ts",
+          "line": 12,
+          "end_line": 16,
+          "label": "returns 501 Not implemented"
+        }
+      ]
+    },
+    {
+      "id": "cartProvider",
+      "type": "frontend",
+      "label": "Cart Provider",
+      "sublabel": "client · useOptimistic",
+      "pos": [
+        261,
+        172
+      ],
+      "size": [
+        155,
+        64
+      ],
+      "sources": [
+        {
+          "path": "components/cart-provider.tsx",
+          "line": 117,
+          "end_line": 149,
+          "label": "hydrates on mount, optimistic writes"
+        }
+      ]
+    },
+    {
+      "id": "cartActions",
+      "type": "backend",
+      "label": "Cart Server Actions",
+      "sublabel": "lib/cart-actions.ts",
+      "pos": [
+        498,
+        172
+      ],
+      "size": [
+        155,
+        64
+      ],
+      "sources": [
+        {
+          "path": "lib/cart-actions.ts",
+          "line": 1,
+          "end_line": 41,
+          "label": "'use server' + updateTag('cart')"
+        }
+      ]
+    },
+    {
+      "id": "cartCookie",
+      "type": "database",
+      "label": "cart_token cookie",
+      "sublabel": "httpOnly · 30 days",
+      "pos": [
+        735,
+        172
+      ],
+      "size": [
+        155,
+        64
+      ],
+      "sources": [
+        {
+          "path": "lib/cart-token.ts",
+          "line": 12,
+          "end_line": 26,
+          "label": "getOrCreateCartToken sets cookie"
+        }
+      ]
+    },
+    {
+      "id": "storefront",
+      "type": "frontend",
+      "label": "Storefront Routes",
+      "sublabel": "app/(store) · RSC",
+      "tag": "static · SSG · dynamic",
+      "pos": [
+        261,
+        310
+      ],
+      "size": [
+        155,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/(store)/page.tsx",
+          "line": 9,
+          "end_line": 12,
+          "label": "force-static, revalidate 60"
+        },
+        {
+          "path": "app/(store)/products/[param]/page.tsx",
+          "line": 15,
+          "end_line": 51,
+          "label": "generateStaticParams"
+        },
+        {
+          "path": "app/(store)/search/page.tsx",
+          "line": 25,
+          "end_line": 26,
+          "label": "dynamic via searchParams"
+        }
+      ]
+    },
+    {
+      "id": "storeApi",
+      "type": "backend",
+      "label": "lib/api.ts",
+      "sublabel": "typed fetch · bypass secret",
+      "pos": [
+        972,
+        310
+      ],
+      "size": [
+        155,
+        548
+      ],
+      "sources": [
+        {
+          "path": "lib/api.ts",
+          "line": 27,
+          "end_line": 31,
+          "label": "API_BASE_URL + BYPASS_SECRET"
+        },
+        {
+          "path": "lib/api.ts",
+          "line": 64,
+          "end_line": 72,
+          "label": "withBypass appends the secret"
+        }
+      ]
+    },
+    {
+      "id": "swagApi",
+      "type": "external",
+      "label": "Swag Store API",
+      "sublabel": "products · cart · orders",
+      "pos": [
+        972,
+        34
+      ],
+      "size": [
+        155,
+        72
+      ],
+      "sources": [
+        {
+          "path": "lib/api.ts",
+          "line": 27,
+          "end_line": 30,
+          "label": "vercel-agentic-swag-store-api"
+        }
+      ]
+    },
+    {
+      "id": "agentChat",
+      "type": "frontend",
+      "label": "Agent Chat Sidebar",
+      "sublabel": "WorkflowChatTransport",
+      "pos": [
+        24,
+        470
+      ],
+      "size": [
+        155,
+        72
+      ],
+      "sources": [
+        {
+          "path": "components/agent-chat.tsx",
+          "line": 53,
+          "end_line": 84,
+          "label": "transport + useChat"
+        },
+        {
+          "path": "components/agent-chat.tsx",
+          "line": 134,
+          "end_line": 137,
+          "label": "tool parts render product cards"
+        }
+      ]
+    },
+    {
+      "id": "chatRoute",
+      "type": "backend",
+      "label": "Chat Route",
+      "sublabel": "POST /api/chat · start()",
+      "pos": [
+        261,
+        470
+      ],
+      "size": [
+        155,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/api/chat/route.ts",
+          "line": 10,
+          "end_line": 21,
+          "label": "start(chatFlow), x-workflow-run-id"
+        }
+      ]
+    },
+    {
+      "id": "workflowRuntime",
+      "type": "cloud",
+      "label": "Vercel Workflow",
+      "sublabel": "durable runs · checkpoints",
+      "pos": [
+        735,
+        470
+      ],
+      "size": [
+        155,
+        72
+      ],
+      "sources": [
+        {
+          "path": "app/api/chat/route.ts",
+          "line": 3,
+          "end_line": 13,
+          "label": "start() from workflow/api"
+        },
+        {
+          "path": "app/api/chat/[id]/stream/route.ts",
+          "line": 19,
+          "end_line": 21,
+          "label": "getRun(id).getReadable()"
+        }
+      ]
+    },
+    {
+      "id": "streamRoute",
+      "type": "backend",
+      "label": "Stream Resume",
+      "sublabel": "GET /api/chat/[id]/stream",
+      "pos": [
+        24,
+        626
+      ],
+      "size": [
+        155,
+        74
+      ],
+      "sources": [
+        {
+          "path": "app/api/chat/[id]/stream/route.ts",
+          "line": 8,
+          "end_line": 28,
+          "label": "replays from startIndex"
+        }
+      ]
+    },
+    {
+      "id": "gateway",
+      "type": "external",
+      "label": "Vercel AI Gateway",
+      "sublabel": "anthropic/claude-sonnet-4.6",
+      "pos": [
+        261,
+        626
+      ],
+      "size": [
+        155,
+        74
+      ],
+      "sources": [
+        {
+          "path": "lib/agent.ts",
+          "line": 43,
+          "end_line": 50,
+          "label": "bare model string via AI Gateway"
+        },
+        {
+          "path": "lib/workflows/chat-flow.ts",
+          "line": 23,
+          "end_line": 27,
+          "label": "DurableAgent model"
+        }
+      ]
+    },
+    {
+      "id": "chatFlow",
+      "type": "backend",
+      "label": "chatFlow",
+      "sublabel": "DurableAgent · use workflow",
+      "pos": [
+        498,
+        626
+      ],
+      "size": [
+        155,
+        74
+      ],
+      "sources": [
+        {
+          "path": "lib/workflows/chat-flow.ts",
+          "line": 18,
+          "end_line": 32,
+          "label": "checkpointed tool loop, streams out"
+        },
+        {
+          "path": "lib/agent.ts",
+          "line": 12,
+          "end_line": 38,
+          "label": "shared shoppingInstructions"
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "type": "backend",
+      "label": "shoppingTools",
+      "sublabel": "4 tools · each a use step",
+      "pos": [
+        735,
+        626
+      ],
+      "size": [
+        155,
+        74
+      ],
+      "sources": [
+        {
+          "path": "lib/tools.ts",
+          "line": 33,
+          "end_line": 132,
+          "label": "search / categories / details"
+        },
+        {
+          "path": "lib/tools.ts",
+          "line": 163,
+          "end_line": 168,
+          "label": "shoppingTools registry"
+        }
+      ]
+    },
+    {
+      "id": "returnFlow",
+      "type": "backend",
+      "label": "returnFlow",
+      "sublabel": "4 steps · retried 3x",
+      "pos": [
+        735,
+        782
+      ],
+      "size": [
+        155,
+        76
+      ],
+      "sources": [
+        {
+          "path": "lib/workflows/return-flow.ts",
+          "line": 18,
+          "end_line": 27,
+          "label": "order, notify, pre-auth, file"
+        },
+        {
+          "path": "lib/tools.ts",
+          "line": 150,
+          "end_line": 158,
+          "label": "returnOrder calls start(returnFlow)"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Vercel Workflow — durable, checkpointed runs",
+      "wraps": [
+        "workflowRuntime",
+        "chatFlow",
+        "tools",
+        "returnFlow"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Gated by the proxy.ts admin cookie",
+      "wraps": [
+        "adminDash",
+        "adminRoute"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "shopper-browses",
+      "from": "shopper",
+      "to": "storefront",
+      "label": "browses",
+      "variant": "emphasis"
+    },
+    {
+      "id": "shopper-admin",
+      "from": "shopper",
+      "to": "adminProxy",
+      "label": "/admin",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "admin-allowed",
+      "from": "adminProxy",
+      "to": "adminDash",
+      "label": "allowed",
+      "variant": "security"
+    },
+    {
+      "id": "admin-post",
+      "from": "adminDash",
+      "to": "adminRoute",
+      "label": "POST",
+      "variant": "dashed"
+    },
+    {
+      "id": "layout-mounts-cart",
+      "from": "storefront",
+      "to": "cartProvider",
+      "label": "mounts",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "cart-action",
+      "from": "cartProvider",
+      "to": "cartActions",
+      "label": "action"
+    },
+    {
+      "id": "cart-issues-token",
+      "from": "cartActions",
+      "to": "cartCookie",
+      "label": "token"
+    },
+    {
+      "id": "cart-crud",
+      "from": "cartActions",
+      "to": "storeApi",
+      "label": "cart CRUD"
+    },
+    {
+      "id": "store-reads",
+      "from": "storefront",
+      "to": "storeApi",
+      "label": "ISR reads (revalidate 300)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-upstream",
+      "from": "storeApi",
+      "to": "swagApi",
+      "label": "REST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "shopper-asks",
+      "from": "shopper",
+      "to": "agentChat",
+      "label": "asks agent",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "id": "chat-post",
+      "from": "agentChat",
+      "to": "chatRoute",
+      "label": "POST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "chat-start",
+      "from": "chatRoute",
+      "to": "workflowRuntime",
+      "label": "start(chatFlow)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "run-chatflow",
+      "from": "workflowRuntime",
+      "to": "chatFlow",
+      "label": "durable run",
+      "variant": "emphasis"
+    },
+    {
+      "id": "model-call",
+      "from": "chatFlow",
+      "to": "gateway",
+      "label": "model call"
+    },
+    {
+      "id": "tool-loop",
+      "from": "chatFlow",
+      "to": "tools",
+      "label": "tool loop"
+    },
+    {
+      "id": "tools-read-api",
+      "from": "tools",
+      "to": "storeApi",
+      "label": "catalog + stock"
+    },
+    {
+      "id": "file-return",
+      "from": "tools",
+      "to": "returnFlow",
+      "label": "start(returnFlow)",
+      "variant": "dashed"
+    },
+    {
+      "id": "return-api",
+      "from": "returnFlow",
+      "to": "storeApi",
+      "label": "order · refund · return"
+    },
+    {
+      "id": "chat-reconnect",
+      "from": "agentChat",
+      "to": "streamRoute",
+      "label": "reconnect",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "resume-run",
+      "from": "streamRoute",
+      "to": "workflowRuntime",
+      "label": "getRun(id)",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Storefront rendering",
+      "items": [
+        "Home is force-static with revalidate 60",
+        "Product pages are SSG via generateStaticParams",
+        "/search is dynamic because it reads searchParams",
+        "Reads go through lib/api.ts with ISR tags"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Agent loop",
+      "items": [
+        "chatFlow runs a DurableAgent over the same tools and instructions as shoppingAgent",
+        "Each tool body is a \"use step\", so tool results are checkpointed",
+        "searchProducts and getProductDetails render as product cards in the sidebar"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Durability and resume",
+      "items": [
+        "POST /api/chat returns the run id in x-workflow-run-id",
+        "The client parks it in localStorage and reconnects via /api/chat/:id/stream",
+        "returnFlow executes each step once and retries it independently"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Secrets and access",
+      "items": [
+        "BYPASS_SECRET never leaves the server; lib/api.ts appends it per request",
+        "The cart UUID lives in an httpOnly cart_token cookie",
+        "proxy.ts redirects every /admin route without the admin cookie"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Still a workshop stub",
+      "items": [
+        "POST /api/admin/chat returns 501",
+        "lib/workflows/admin-chat-flow.ts is an empty placeholder",
+        "components/admin-agent-chat.tsx still uses local useState, not useChat"
+      ]
+    }
+  ]
+}
