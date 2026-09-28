@@ -2,6 +2,9 @@
 
 import { useChat } from "@ai-sdk/react";
 import { ShoppingBagIcon } from "lucide-react";
+import type { ShoppingAgentUIMessage } from "@/lib/agent";
+import { AgentProductCard } from "@/components/agent-product-card";
+import { AgentProductList } from "@/components/agent-product-list";
 import {
   Conversation,
   ConversationContent,
@@ -34,7 +37,8 @@ const linkSafety = {
 };
 
 export function AgentChat() {
-  const { messages, sendMessage, status, stop, error } = useChat();
+  const { messages, sendMessage, status, stop, error } =
+    useChat<ShoppingAgentUIMessage>();
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text.trim();
@@ -60,16 +64,24 @@ export function AgentChat() {
             messages.map((message) => (
               <Message from={message.role} key={message.id}>
                 <MessageContent>
-                  {message.parts.map((part, index) =>
-                    part.type === "text" ? (
-                      <MessageResponse
-                        key={`${message.id}-${index}`}
-                        linkSafety={linkSafety}
-                      >
-                        {part.text}
-                      </MessageResponse>
-                    ) : null
-                  )}
+                  {message.parts.map((part, index) => {
+                    const key = `${message.id}-${index}`;
+
+                    switch (part.type) {
+                      case "text":
+                        return (
+                          <MessageResponse key={key} linkSafety={linkSafety}>
+                            {part.text}
+                          </MessageResponse>
+                        );
+                      case "tool-searchProducts":
+                        return <AgentProductList invocation={part} key={key} />;
+                      case "tool-getProductDetails":
+                        return <AgentProductCard invocation={part} key={key} />;
+                      default:
+                        return null;
+                    }
+                  })}
                 </MessageContent>
               </Message>
             ))

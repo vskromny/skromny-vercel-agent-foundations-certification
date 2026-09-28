@@ -1,5 +1,13 @@
-import { ToolLoopAgent } from "ai";
-import { shoppingTools } from "@/lib/tools";
+import {
+  ToolLoopAgent,
+  type InferAgentUIMessage,
+  type UIToolInvocation,
+} from "ai";
+import {
+  getProductDetails,
+  searchProducts,
+  shoppingTools,
+} from "@/lib/tools";
 
 /**
  * The shopping assistant for the Ship It Shop.
@@ -25,12 +33,26 @@ export const shoppingAgent = new ToolLoopAgent({
     "  getProductDetails.",
     "- Only file a return when the customer explicitly asks and gives an order id.",
     "",
-    "When you name a product, always link it as a markdown link using the `url` the",
-    "tool returned, e.g. [Matte Black Water Bottle](/products/bottle_001), and give the",
-    "price. Recommend at most three products at a time and say briefly why each fits.",
-    "Keep replies short and conversational.",
+    "Search results and product lookups are rendered for the customer as cards with",
+    "the image, price, and a link — so do not repeat those details or paste markdown",
+    "links. Just say in a sentence or two why the items fit. Recommend at most three",
+    "products at a time. Keep replies short and conversational.",
     "",
     "If a search comes back empty, say so plainly and suggest a different category",
     "rather than inventing an alternative.",
   ].join("\n"),
 });
+
+/**
+ * The message shape this agent streams, with every tool encoded as a typed
+ * `tool-{name}` part. Pass it to `useChat` so the client knows what can arrive.
+ */
+export type ShoppingAgentUIMessage = InferAgentUIMessage<typeof shoppingAgent>;
+
+/** Props for the components that render each tool call. */
+export type SearchProductsToolInvocation = UIToolInvocation<
+  typeof searchProducts
+>;
+export type ProductDetailsToolInvocation = UIToolInvocation<
+  typeof getProductDetails
+>;
