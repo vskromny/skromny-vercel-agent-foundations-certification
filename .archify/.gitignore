@@ -1,0 +1,7 @@
+# Archify run evidence — regenerable, not worth versioning
+*.finalize.json
+*.finalize-summary.json
+*.browser-check.json
+*.delivery.json
+review-*/
+visual-check/
